@@ -19,6 +19,7 @@ layout(scalar, push_constant) uniform T {
 } push_constants;
 
 void main() {
+    ivec2 pix = ivec2(gl_GlobalInvocationID.xy);
     ivec2 img_size = imageSize(renderTarget);
     if (gl_GlobalInvocationID.x >= img_size.x || gl_GlobalInvocationID.y >= img_size.y)
         return;
@@ -53,8 +54,7 @@ void main() {
         c = vec4(1.0, 0.5, 0.0, 1.0); 
     }
 
+    ivec2 dst = ivec2(pix.x, img_size.y - 1 - pix.y);
 
-
-
-    imageStore(renderTarget, ivec2(gl_GlobalInvocationID.xy), c);
+    imageStore(renderTarget, dst, c);
 }

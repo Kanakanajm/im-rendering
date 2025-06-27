@@ -128,7 +128,7 @@ int main()
                 push_constants.pos.y -= push_constants.dir.y * moveSpeed;
         }
         // rotate
-        if (input.left)
+        if (input.right)
         {
             double oldDirX = push_constants.dir.x;
             push_constants.dir.x = push_constants.dir.x * cosf(-rotSpeed) - push_constants.dir.y * sinf(-rotSpeed);
@@ -137,7 +137,7 @@ int main()
             push_constants.plane.x = push_constants.plane.x * cosf(-rotSpeed) - push_constants.plane.y * sinf(-rotSpeed);
             push_constants.plane.y = oldPlaneX * sinf(-rotSpeed) + push_constants.plane.y * cosf(-rotSpeed);
         }
-        if (input.right)
+        if (input.left)
         {
             double oldDirX = push_constants.dir.x;
             push_constants.dir.x = push_constants.dir.x * cosf(rotSpeed) - push_constants.dir.y * sinf(rotSpeed);
