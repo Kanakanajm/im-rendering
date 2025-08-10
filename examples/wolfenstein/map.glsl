@@ -38,6 +38,7 @@ void main() {
         case 2:  c = vec4(0.0, 1.0, 0.0, 1.0);  break; //green
         case 3:  c = vec4(0.0, 0.0, 1.0, 1.0);   break; //blue
         case 4:  c = vec4(1.0, 1.0, 1.0, 1.0);  break; //white
+        case 5:  c = vec4(1.0, 0.0, 0.0, 1.0); break; //red
         default: c = vec4(0.0, 0.0, 0.0, 1.0); break; // black
     }
 
