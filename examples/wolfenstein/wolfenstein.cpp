@@ -47,6 +47,13 @@ struct vec2 {
 
 struct {
   VkDeviceAddress map_buffer;
+  vec2 pos;
+  vec2 dir;
+  vec2 plane;
+} push_constants_map;
+
+struct {
+  VkDeviceAddress map_buffer;
   VkDeviceAddress its_buffer;
   VkDeviceAddress dist_buffer;
   vec2 pos;
@@ -197,6 +204,11 @@ int main() {
           push_constants_intersect.plane.y * cosf(rotSpeed);
     }
 
+    push_constants_map.dir = push_constants_intersect.dir;
+    push_constants_map.pos = push_constants_intersect.pos;
+    push_constants_map.plane = push_constants_intersect.plane;
+    push_constants_map.map_buffer = push_constants_intersect.map_buffer;
+
     // Rendering stage
     swapchain.renderFrameSimplified([&](imr::Swapchain::SimplifiedRenderContext
                                             &context) {
@@ -235,9 +247,9 @@ int main() {
         shader_bind_helper->set_storage_image(0, 0, image);
         shader_bind_helper->commit(cmdbuf);
 
-        vkCmdPushConstants(
-            cmdbuf, map_shader.layout(), VK_SHADER_STAGE_COMPUTE_BIT, 0,
-            sizeof(push_constants_intersect), &push_constants_intersect);
+        vkCmdPushConstants(cmdbuf, map_shader.layout(),
+                           VK_SHADER_STAGE_COMPUTE_BIT, 0,
+                           sizeof(push_constants_map), &push_constants_map);
 
         // We dispatch invocations in "workgroups", whose size is defined in the
         // compute shader file we need to dispatch (screenSize / workgroupSize)
