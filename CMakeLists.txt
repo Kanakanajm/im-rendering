@@ -27,7 +27,7 @@ if (IMR_USE_CUSTOM_shady)
     FetchContent_Declare(
         shady
         GIT_REPOSITORY https://github.com/shady-gang/shady
-        GIT_TAG        main
+        GIT_TAG        imr
     )
     FetchContent_MakeAvailable(shady)
 else ()
