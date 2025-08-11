@@ -7,7 +7,7 @@ layout(set = 0, binding = 0) uniform image2D renderTarget;
 
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
-layout(scalar, buffer_reference) buffer ItsBuffer { int its[3840]; };
+layout(scalar, buffer_reference) buffer ItsBuffer { ivec2 its[3840]; };
 
 layout(scalar, buffer_reference) buffer DistBuffer { float dist[3840]; };
 
@@ -20,7 +20,7 @@ push_constants;
 void main() {
   ivec2 img_size = imageSize(renderTarget);
 
-  if (push_constants.its_buffer.its[gl_GlobalInvocationID.x] > 0) {
+  if (push_constants.its_buffer.its[gl_GlobalInvocationID.x].x > 0) {
 
     // Calculate height of line to draw on screen
     int lineHeight = int(
@@ -38,12 +38,13 @@ void main() {
 
     if (gl_GlobalInvocationID.y <= drawEnd &&
         gl_GlobalInvocationID.y >= drawStart) {
-      switch (push_constants.its_buffer.its[gl_GlobalInvocationID.x] % 6) {
+      switch (push_constants.its_buffer.its[gl_GlobalInvocationID.x].x % 6) {
       case 1:
         c = vec4(0.5, 0.5, 0.5, 1.0);
         break; // grey
       case 2:
-        c = vec4(0.0, 1.0, 0.0, 1.0);
+        c = vec4(push_constants.its_buffer.its[gl_GlobalInvocationID.x].y % 2,
+                 1.0, 0.0, 1.0);
         break; // green
       case 3:
         c = vec4(0.0, 0.0, 1.0, 1.0);
@@ -59,7 +60,7 @@ void main() {
         break; // black
       }
       // give x and y sides different brightness
-      if (push_constants.its_buffer.its[gl_GlobalInvocationID.x] > 6) {
+      if (push_constants.its_buffer.its[gl_GlobalInvocationID.x].x > 6) {
         c = c / 2;
       }
     }

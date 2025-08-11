@@ -7,7 +7,7 @@ layout(local_size_x = 32) in;
 
 layout(scalar, buffer_reference) buffer MapBuffer { int map[24][24]; };
 
-layout(scalar, buffer_reference) buffer ItsBuffer { int its[3840]; };
+layout(scalar, buffer_reference) buffer ItsBuffer { ivec2 its[3840]; };
 
 layout(scalar, buffer_reference) buffer DistBuffer { float dist[3840]; };
 
@@ -77,22 +77,38 @@ void main() {
     // Check if ray has hit a wall
     if (push_constants.map_buffer.map[mapX][mapY] > 0) {
       hit = 1;
-      push_constants.its_buffer.its[gl_GlobalInvocationID.x] =
+      push_constants.its_buffer.its[gl_GlobalInvocationID.x].x =
           push_constants.map_buffer.map[mapX][mapY];
     }
     i++;
   }
-  // Calculate distance projected on camera direction (Euclidean distance would
-  // give fisheye effect!)
-  if (side == 0)
+
+  // where ray intersects wall in x-axis
+  float wallX;
+  if (side == 0) {
     perpWallDist = sideDistX - deltaDistX;
-  else {
+    wallX = push_constants.pos.y + perpWallDist * ray.y;
+  } else {
     perpWallDist = sideDistY - deltaDistY;
-    push_constants.its_buffer.its[gl_GlobalInvocationID.x] += 6;
+    wallX = push_constants.pos.x + perpWallDist * ray.x;
+
+    push_constants.its_buffer.its[gl_GlobalInvocationID.x].x += 6;
   }
 
+  wallX -= floor((wallX));
+
+  // texture x coordinate, 64 is texture size
+  int texX = int(wallX * 64.0);
+
+  // the order of texture should be the same (left to right)
+  if (side == 0 && ray.x > 0)
+    texX = 64 - texX - 1;
+  if (side == 1 && ray.y < 0)
+    texX = 64 - texX - 1;
+  push_constants.its_buffer.its[gl_GlobalInvocationID.x].y = texX;
+
   if (hit == 0) {
-    push_constants.its_buffer.its[gl_GlobalInvocationID.x] = 0;
+    push_constants.its_buffer.its[gl_GlobalInvocationID.x].x = 0;
     push_constants.dist_buffer.dist[gl_GlobalInvocationID.x] = 0;
 
   } else {

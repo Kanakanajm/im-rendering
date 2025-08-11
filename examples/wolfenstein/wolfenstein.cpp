@@ -45,6 +45,10 @@ struct vec2 {
   float x, y;
 };
 
+struct ivec2 {
+  int x, y;
+};
+
 struct {
   VkDeviceAddress map_buffer;
   vec2 pos;
@@ -108,7 +112,7 @@ int main() {
   map_buffer->uploadDataSync(0, map_buffer->size, worldMap);
   push_constants_intersect.map_buffer = map_buffer->device_address();
 
-  int its[3840];
+  ivec2 its[3840];
   std::unique_ptr<imr::Buffer> its_buffer = std::make_unique<imr::Buffer>(
       device, sizeof(its),
       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
