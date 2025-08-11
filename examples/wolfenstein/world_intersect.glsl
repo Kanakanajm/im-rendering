@@ -7,9 +7,9 @@ layout(local_size_x = 32) in;
 
 layout(scalar, buffer_reference) buffer MapBuffer { int map[24][24]; };
 
-layout(scalar, buffer_reference) buffer ItsBuffer { int its[1024]; };
+layout(scalar, buffer_reference) buffer ItsBuffer { int its[3840]; };
 
-layout(scalar, buffer_reference) buffer DistBuffer { float dist[1024]; };
+layout(scalar, buffer_reference) buffer DistBuffer { float dist[3840]; };
 
 layout(scalar, push_constant) uniform T {
   MapBuffer map_buffer;
@@ -26,8 +26,8 @@ void main() {
   int mapX = int(push_constants.pos.x);
   int mapY = int(push_constants.pos.y);
 
-  // x-coordinate in camera space, in [-1, 1]
-  float cameraX = 2 * gl_GlobalInvocationID.x / 1024 - 1;
+  // x-coordinate in camera space, in [-1, 1)
+  float cameraX = 2.0 * float(gl_GlobalInvocationID.x) / 1024.0 - 1.0;
 
   vec2 ray = push_constants.dir + push_constants.plane * cameraX;
 
@@ -91,9 +91,11 @@ void main() {
     push_constants.its_buffer.its[gl_GlobalInvocationID.x] += 6;
   }
 
-  push_constants.dist_buffer.dist[gl_GlobalInvocationID.x] = perpWallDist;
-
   if (hit == 0) {
     push_constants.its_buffer.its[gl_GlobalInvocationID.x] = 0;
+    push_constants.dist_buffer.dist[gl_GlobalInvocationID.x] = 0;
+
+  } else {
+    push_constants.dist_buffer.dist[gl_GlobalInvocationID.x] = perpWallDist;
   }
 }

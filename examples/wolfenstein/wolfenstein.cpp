@@ -12,8 +12,8 @@
 #define BLOCK_SPEED 3.0f    // number of block per second
 #define ROTATE_SPEED 1.571f // radians per second, default as pi/8
 
-#define WIN_WIDTH 1024
-#define WIN_HEIGHT 1024
+#define WIN_WIDTH 3840
+#define WIN_HEIGHT 2160
 
 int worldMap[24][24] = {
     {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
@@ -108,7 +108,7 @@ int main() {
   map_buffer->uploadDataSync(0, map_buffer->size, worldMap);
   push_constants_intersect.map_buffer = map_buffer->device_address();
 
-  int its[1024];
+  int its[3840];
   std::unique_ptr<imr::Buffer> its_buffer = std::make_unique<imr::Buffer>(
       device, sizeof(its),
       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
@@ -117,7 +117,7 @@ int main() {
   push_constants_intersect.its_buffer = its_buffer->device_address();
   push_constants_render.its_buffer = its_buffer->device_address();
 
-  float dist[1024];
+  float dist[3840];
   std::unique_ptr<imr::Buffer> dist_buffer = std::make_unique<imr::Buffer>(
       device, sizeof(dist),
       VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
@@ -135,8 +135,8 @@ int main() {
     fps_counter.updateGlfwWindowTitle(window);
 
     // actual move speed (block/frame)
-    moveSpeed = BLOCK_SPEED * 0.00083; // 1200 fps
-    rotSpeed = ROTATE_SPEED * 0.00083; // 1200 fps
+    moveSpeed = BLOCK_SPEED * 0.00125; // 800 fps
+    rotSpeed = ROTATE_SPEED * 0.00125; // 800 fps
     // Input stage
     // Read keys
     input.forward = glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS;
@@ -256,7 +256,7 @@ int main() {
         // workgroups, but rounding up if the screen size is not a multiple of
         // the workgroup size all sizes here are 3D but we use only the first
         // two to match the screen size and make the "depth" dimension just one
-        vkCmdDispatch(cmdbuf, 32, 32, 1);
+        vkCmdDispatch(cmdbuf, 120, 67, 1);
         context.addCleanupAction([=, &device]() { delete shader_bind_helper; });
       } else {
         auto &world_intersect_shader = shaders->world_intersect;
@@ -267,7 +267,7 @@ int main() {
                            VK_SHADER_STAGE_COMPUTE_BIT, 0,
                            sizeof(push_constants_intersect),
                            &push_constants_intersect);
-        vkCmdDispatch(cmdbuf, 32, 1, 1);
+        vkCmdDispatch(cmdbuf, 120, 1, 1);
 
         vk.cmdPipelineBarrier2KHR(
             cmdbuf,
@@ -304,7 +304,7 @@ int main() {
         // workgroups, but rounding up if the screen size is not a multiple of
         // the workgroup size all sizes here are 3D but we use only the first
         // two to match the screen size and make the "depth" dimension just one
-        vkCmdDispatch(cmdbuf, 32, 32, 1);
+        vkCmdDispatch(cmdbuf, 120, 67, 1);
 
         context.addCleanupAction([=, &device]() { delete shader_bind_helper; });
       }

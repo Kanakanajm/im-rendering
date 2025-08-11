@@ -7,9 +7,9 @@ layout(set = 0, binding = 0) uniform image2D renderTarget;
 
 layout(local_size_x = 32, local_size_y = 32, local_size_z = 1) in;
 
-layout(scalar, buffer_reference) buffer ItsBuffer { int its[1024]; };
+layout(scalar, buffer_reference) buffer ItsBuffer { int its[3840]; };
 
-layout(scalar, buffer_reference) buffer DistBuffer { float dist[1024]; };
+layout(scalar, buffer_reference) buffer DistBuffer { float dist[3840]; };
 
 layout(scalar, push_constant) uniform T {
   ItsBuffer its_buffer;
