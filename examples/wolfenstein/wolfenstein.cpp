@@ -256,7 +256,7 @@ int main() {
         // workgroups, but rounding up if the screen size is not a multiple of
         // the workgroup size all sizes here are 3D but we use only the first
         // two to match the screen size and make the "depth" dimension just one
-        vkCmdDispatch(cmdbuf, 32, 32, 1);
+        vkCmdDispatch(cmdbuf, (image.size().width + 31) / 32, (image.size().height + 31) / 32, 1);
         context.addCleanupAction([=, &device]() { delete shader_bind_helper; });
       } else {
         auto &world_intersect_shader = shaders->world_intersect;
@@ -267,7 +267,7 @@ int main() {
                            VK_SHADER_STAGE_COMPUTE_BIT, 0,
                            sizeof(push_constants_intersect),
                            &push_constants_intersect);
-        vkCmdDispatch(cmdbuf, 32, 1, 1);
+        vkCmdDispatch(cmdbuf, (image.size().width + 31) / 32, 1, 1);
 
         vk.cmdPipelineBarrier2KHR(
             cmdbuf,
@@ -304,7 +304,7 @@ int main() {
         // workgroups, but rounding up if the screen size is not a multiple of
         // the workgroup size all sizes here are 3D but we use only the first
         // two to match the screen size and make the "depth" dimension just one
-        vkCmdDispatch(cmdbuf, 32, 32, 1);
+        vkCmdDispatch(cmdbuf, (image.size().width + 31) / 32, (image.size().height + 31) / 32, 1);
 
         context.addCleanupAction([=, &device]() { delete shader_bind_helper; });
       }
