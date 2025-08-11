@@ -27,7 +27,7 @@ void main() {
   int mapY = int(push_constants.pos.y);
 
   // x-coordinate in camera space, in [-1, 1)
-  float cameraX = 2.0 * float(gl_GlobalInvocationID.x) / 1024.0 - 1.0;
+  float cameraX = 2.0 * float(gl_GlobalInvocationID.x) / 3840.0 - 1.0;
 
   vec2 ray = push_constants.dir + push_constants.plane * cameraX;
 
