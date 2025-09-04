@@ -8,11 +8,17 @@
 #include "../common/camera.h"
 
 using namespace nasl;
+#define CUBE_SIZE 3
 
 struct Tri { vec3 v0, v1, v2; vec3 color; };
 
 struct Cube {
     Tri triangles[12];
+};
+
+struct CubeInstance {
+    ivec3 position;
+    VkDeviceAddress buffer;
 };
 
 Cube make_cube() {
@@ -37,13 +43,13 @@ Cube make_cube() {
      * https://www.asciiart.eu/art-and-design/geometries
      */
     vec3 A = { 0, 0, 0 };
-    vec3 B = { 1, 0, 0 };
-    vec3 C = { 1, 1, 0 };
-    vec3 D = { 0, 1, 0 };
-    vec3 E = { 0, 0, 1 };
-    vec3 F = { 1, 0, 1 };
-    vec3 G = { 1, 1, 1 };
-    vec3 H = { 0, 1, 1 };
+    vec3 B = { CUBE_SIZE, 0, 0 };
+    vec3 C = { CUBE_SIZE, CUBE_SIZE, 0 };
+    vec3 D = { 0, CUBE_SIZE, 0 };
+    vec3 E = { 0, 0, CUBE_SIZE };
+    vec3 F = { CUBE_SIZE, 0, CUBE_SIZE };
+    vec3 G = { CUBE_SIZE, CUBE_SIZE, CUBE_SIZE };
+    vec3 H = { 0, CUBE_SIZE, CUBE_SIZE };
 
     int i = 0;
     Cube cube = {};
@@ -77,14 +83,23 @@ Cube make_cube() {
 }
 
 struct {
+    mat4 mpp = identity_mat4; // prospective projection matrix
+    mat4 mr = identity_mat4; // camera rotation matrix
+    mat4 mpp_inv = identity_mat4;
+    vec3 cam_pos = vec3(0);
+} transform_matrices;
+
+struct {
     VkDeviceAddress vertex_buffer;
-    mat4 matrix;
-    float time;
+    VkDeviceAddress debug_buffer;
+    VkDeviceAddress debug2_buffer;
+    VkDeviceAddress trans_buffer;
+    ivec4 cube;
 } push_constants_batched;
 
 Camera camera;
 CameraFreelookState camera_state = {
-    .fly_speed = 1.0f,
+    .fly_speed = 100.0f,
     .mouse_sensitivity = 1,
 };
 CameraInput camera_input;
@@ -145,7 +160,7 @@ struct Shaders {
 int main(int argc, char** argv) {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    auto window = glfwCreateWindow(1024, 1024, "Example", nullptr, nullptr);
+    auto window = glfwCreateWindow(400, 400, "Example", nullptr, nullptr);
 
     glfwSetKeyCallback(window, [](GLFWwindow* window, int key, int scancode, int action, int mods) {
         if (key == GLFW_KEY_R && (mods & GLFW_MOD_CONTROL))
@@ -179,32 +194,76 @@ int main(int argc, char** argv) {
         vertex_buffer->uploadDataSync(0, vertex_buffer->size, vertex_vector.data());
     }
 
-    std::vector<vec3> positions;
-    for (size_t i = 0; i < INSTANCES_COUNT; i++) {
-        vec3 p;
-        p.x = ((float)rand() / RAND_MAX) * 20 - 10;
-        p.y = ((float)rand() / RAND_MAX) * 20 - 10;
-        p.z = ((float)rand() / RAND_MAX) * 20 - 10;
+    std::vector<ivec3> positions;
+
+    // self assign
+    // positions.push_back(ivec3(-3.5, 2, 0));
+    // positions.push_back(ivec3(0, 1, -2));
+    // positions.push_back(ivec3(4, -2, 3));
+    // positions.push_back(ivec3(1, -4, -10));
+
+
+
+    // pseudo square
+    // int l = int(sqrt(INSTANCES_COUNT));
+
+    // for (size_t i = 0; i < INSTANCES_COUNT; i++) {
+    //     ivec3 p;
+    //     // int row = i / l;
+    //     // int col = i - row * l;
+    //     p = ivec3(0, 0, i);
+
+    //     positions.push_back(p);
+    // }
+
+    // random pos
+        for (size_t i = 0; i < INSTANCES_COUNT; i++) {
+        ivec3 p;
+        p.x = int(((float)rand() / RAND_MAX) * 200 - 100);
+        p.y = int(((float)rand() / RAND_MAX) * 200 - 100);
+        p.z = int(((float)rand() / RAND_MAX) * 200 - 100);
         positions.push_back(p);
     }
 
     auto prev_frame = imr_get_time_nano();
     float delta = 0;
 
-    camera = {{0, 0, 3}, {0, 0}, 60};
+    camera = {{0, 0, 11}, {0, 0}, 90};
 
+    vec4 debug_vectors[400*400] = { vec4(0) };
+
+    std::unique_ptr<imr::Buffer> debug_buffer = std::make_unique<imr::Buffer>(device, sizeof(debug_vectors), VK_BUFFER_USAGE_TRANSFER_DST_BIT  | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    push_constants_batched.debug_buffer = debug_buffer->device_address();
+    
+    vec4 debug2_vectors[400*400] = { vec4(0) };
+
+    std::unique_ptr<imr::Buffer> debug2_buffer = std::make_unique<imr::Buffer>(device, sizeof(debug2_vectors), VK_BUFFER_USAGE_TRANSFER_DST_BIT  | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    push_constants_batched.debug2_buffer = debug2_buffer->device_address();
+    
     std::unique_ptr<imr::Image> depthBuffer;
 
+    std::unique_ptr<imr::Buffer> trans_buffer = std::make_unique<imr::Buffer>(device, sizeof(transform_matrices), VK_BUFFER_USAGE_TRANSFER_DST_BIT  | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    push_constants_batched.trans_buffer = trans_buffer->device_address();
+
+    
     auto shaders = std::make_unique<Shaders>(device, swapchain);
 
     auto& vk = device.dispatch;
     while (!glfwWindowShouldClose(window)) {
+        debug_buffer->uploadDataSync(0, debug_buffer->size, debug_vectors);
+        debug2_buffer->uploadDataSync(0, debug2_buffer->size, debug2_vectors);
+
         fps_counter.tick();
         fps_counter.updateGlfwWindowTitle(window);
 
         swapchain.renderFrameSimplified([&](imr::Swapchain::SimplifiedRenderContext& context) {
             camera_update(window, &camera_input);
             camera_move_freelook(&camera, &camera_input, &camera_state, delta);
+
+
+            mat4 mr = identity_mat4;
+            mr = mul_mat4(invert_mat4(camera_rotation_matrix(&camera)),  mr);
+            transform_matrices.mr =  mul_mat4(translate_mat4(camera.position), mr);
 
             if (reload_shaders) {
                 swapchain.drain();
@@ -269,21 +328,24 @@ int main(int argc, char** argv) {
             m = m * flip_y;
             mat4 view_mat = camera_get_view_mat4(&camera, context.image().size().width, context.image().size().height);
             m = m * view_mat;
-            m = m * translate_mat4(vec3(-0.5, -0.5f, -0.5f));
+            // m = m * translate_mat4(vec3(-0.5, -0.5f, -0.5f));
+            transform_matrices.mpp = m;
+            transform_matrices.mpp_inv = invert_mat4(m);
+            transform_matrices.cam_pos = camera.position;
+            trans_buffer->uploadDataSync(0, trans_buffer->size, &transform_matrices);
+            
 
             auto& pipeline = shaders->pipeline;
             vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline());
 
-            push_constants_batched.time = ((imr_get_time_nano() / 1000) % 10000000000) / 1000000.0f;
-
             context.frame().withRenderTargets(cmdbuf, { &image }, &*depthBuffer, [&]() {
+                uint cube_id = 1;
                 for (auto pos : positions) {
-                    mat4 cube_matrix = m;
-                    cube_matrix = cube_matrix * translate_mat4(pos);
+                    push_constants_batched.cube = ivec4(pos.x, pos.y, pos.z, cube_id);
 
-                    push_constants_batched.matrix = cube_matrix;
-                    vkCmdPushConstants(cmdbuf, pipeline->layout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(push_constants_batched), &push_constants_batched);
+                    vkCmdPushConstants(cmdbuf, pipeline->layout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push_constants_batched), &push_constants_batched);
                     vkCmdDraw(cmdbuf, 12 * 3, 1, 0, 0);
+                    cube_id++;
                 }
             });
 

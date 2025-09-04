@@ -11,15 +11,28 @@ layout(scalar, buffer_reference) buffer VertexBuffer {
     vec3 vertexColors[36];
 };
 
+layout(scalar, buffer_reference) buffer DebugBuffer {
+    vec4 vectors[400*400];
+};
+
+layout(scalar, buffer_reference) buffer TransformBuffer {
+    mat4 mpp; // perspective projection matrix
+    mat4 mr; // camera rotation matrix
+    mat4 mpp_inv;
+    vec3 cam_pos;
+};
+
 layout(scalar, push_constant) uniform T {
 	VertexBuffer vertex_buffer;
-    mat4 matrix;
-    float time;
+    DebugBuffer debug_buffer;
+    DebugBuffer debug2_buffer;
+    TransformBuffer trans_buffer;
+    ivec4 cube; // (x, y, z) position and id as w
 } push_constants;
 
 void main() {
-    mat4 matrix = push_constants.matrix;
+    mat4 matrix = push_constants.trans_buffer.mpp;
     vec3 vertex = push_constants.vertex_buffer.vertices[gl_VertexIndex];
-    gl_Position = matrix * vec4(vertex, 1.0);
+    gl_Position = matrix * vec4(vertex + push_constants.cube.xyz, 1.0);
     color = push_constants.vertex_buffer.vertexColors[gl_VertexIndex];
 }
