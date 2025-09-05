@@ -2,6 +2,7 @@
 #extension GL_EXT_shader_image_load_formatted : require
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_buffer_reference : require
+#define EPSILON 1e-3
 
 layout(location = 0)
 in vec3 color;
@@ -34,7 +35,7 @@ layout(scalar, push_constant) uniform T {
 } push_constants;
 
 bool inRange(ivec3 m) {
-    return all(greaterThanEqual(m, ivec3(0))) && all(lessThan(m, ivec3(3)));
+    return all(greaterThanEqual(vec3(m) + vec3(EPSILON), vec3(0))) && all(lessThan(vec3(m) - vec3(EPSILON), vec3(3)));
 }
 
 bool textureFrontFace(ivec3 m) {
@@ -69,7 +70,8 @@ void main() {
 
     ivec3 map = ivec3(os.xyz);
 
-    colorOut = vec4(palette[map.x], palette[map.y], palette[map.z], float(inRange(map)));
+    colorOut = vec4(palette[map.x], palette[map.y], palette[map.z], 1) * float(inRange(map));
+    // colorOut = vec4(float(inRange(map)));
 }
 
 

@@ -108,7 +108,7 @@ void camera_update(GLFWwindow*, CameraInput* input);
 
 bool reload_shaders = false;
 
-#define INSTANCES_COUNT 1024
+#define INSTANCES_COUNT 1
 
 struct Shaders {
     std::vector<std::string> files = { "20_graphics_pipeline.vert.spv", "20_graphics_pipeline.frag.spv" };
@@ -219,9 +219,9 @@ int main(int argc, char** argv) {
     // random pos
         for (size_t i = 0; i < INSTANCES_COUNT; i++) {
         ivec3 p;
-        p.x = int(((float)rand() / RAND_MAX) * 200 - 100);
-        p.y = int(((float)rand() / RAND_MAX) * 200 - 100);
-        p.z = int(((float)rand() / RAND_MAX) * 200 - 100);
+        p.x = int(((float)rand() / RAND_MAX) * 20 - 10);
+        p.y = int(((float)rand() / RAND_MAX) * 20 - 10);
+        p.z = int(((float)rand() / RAND_MAX) * 20 - 10);
         positions.push_back(p);
     }
 
