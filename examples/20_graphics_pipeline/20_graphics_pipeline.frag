@@ -40,7 +40,11 @@ layout(scalar, push_constant) uniform T {
 } push_constants;
 
 bool inRange(ivec3 m) {
-    return all(greaterThanEqual(vec3(m) + vec3(EPSILON), vec3(0))) && all(lessThan(vec3(m) - vec3(EPSILON), vec3(3)));
+    return all(greaterThanEqual(vec3(m), vec3(0))) && all(lessThan(vec3(m), vec3(3)));
+}
+
+bool isBlock(ivec3 m) {
+    return inRange(m) && push_constants.block_buffer.blocks[m.x][m.y][m.z] != 0;
 }
 
 // should only be used in dda after inRange check!
@@ -81,79 +85,84 @@ void main() {
 
     vec3 dir = normalize((push_constants.trans_buffer.m_cs_ws * vec4(cs, 0)).xyz);
 
+    // object space
     vec3 pos = os.xyz;
+    // clamp to [0, 3)
+    pos = clamp(pos, 0, 2.9999);
 
     ivec3 map = ivec3(pos);
-
-
-    // debug saves
-    push_constants.debug_buffer.vectors[iscreen.y*400 + iscreen.x] = gl_FragCoord;
-    push_constants.debug2_buffer.vectors[iscreen.y*400 + iscreen.x] = vec4(map, 0);
 
     // show dir debug
     // colorOut = vec4(dir, 1.0);
 
     // show coverage
-    colorOut = vec4(float(inRange(map)));
+    // colorOut = vec4(float(inRange(map)));
 
     // show object space index
-    // colorOut = vec4(palette[map.x], palette[map.y], palette[map.z], float(inRange(map)));
+    // colorOut = vec4(palette[map.x], palette[map.y], palette[map.z], 1) * float(inRange(map));
 
     // show front face only
     // colorOut = vec4(float(textureFrontFace(map)));
 
     // dda
 
-    // vec3 deltaDist = abs(1 / dir);
+    vec3 deltaDist = abs(1 / dir);
 
-    // ivec3 rayStep = ivec3(sign(dir));
-    // vec3 sideDist =
-    //     (sign(dir) * (vec3(map) - pos) + (sign(dir) * 0.5) + 0.5) * deltaDist;
+    ivec3 rayStep = ivec3(sign(dir));
 
-    // bvec3 mask = bvec3(false, true, false);
+    vec3 sideDist =
+        (sign(dir) * (vec3(map) - pos) + (sign(dir) * 0.5) + 0.5) * deltaDist;
 
-    // for (int i = 0; i < MAX_STEP; i++) {
-    //     // if hit block
-    //     if (inRange(map)) {
-    //         vec4 shadow;
-    //         // fake shadow on sides
-    //         if (mask.x) {
-    //             shadow = vec4(0.5);
-    //         }
-    //         if (mask.y) {
-    //             shadow = vec4(1.0);
-    //         }
-    //         if (mask.z) {
-    //             shadow = vec4(0.75);
-    //         }
-    //         // mix shadow color with block color
-    //         colorOut = shadow * vec4(push_constants.block_buffer.blocks[map.x][map.y][map.z]);
-    //         return;
-    //     }
+    push_constants.debug_buffer.vectors[iscreen.y*400 + iscreen.x] = vec4(rayStep, 99);
+            push_constants.debug2_buffer.vectors[iscreen.y*400 + iscreen.x] = vec4(map, 99);
 
-    //     if (sideDist.x < sideDist.y) {
-    //         if (sideDist.x < sideDist.z) {
-    //             sideDist.x += deltaDist.x;
-    //             map.x += rayStep.x;
-    //             mask = bvec3(true, false, false);
-    //         } else {
-    //             sideDist.z += deltaDist.z;
-    //             map.z += rayStep.z;
-    //             mask = bvec3(false, false, true);
-    //         }
-    //     } else {
-    //         if (sideDist.y < sideDist.z) {
-    //             sideDist.y += deltaDist.y;
-    //             map.y += rayStep.y;
-    //             mask = bvec3(false, true, false);
-    //         } else {
-    //             sideDist.z += deltaDist.z;
-    //             map.z += rayStep.z;
-    //             mask = bvec3(false, false, true);
-    //         }
-    //     }
-    // }
-    // colorOut = vec4(0);
+    bvec3 mask = bvec3(false, true, false);
+    for (int i = 0; i < MAX_STEP; i++) {
+        // if hit block
+        if (isBlock(map)) {
+            float shadow;
+            // fake shadow on sides
+            if (mask.x) {
+                shadow = 0.5;
+            }
+            if (mask.y) {
+                shadow = 1.0;
+            }
+            if (mask.z) {
+                shadow = 0.75;
+            }
+            // mix shadow color with block color
+            colorOut = shadow * vec4(push_constants.block_buffer.blocks[map.x][map.y][map.z]);
+
+            return;
+        }
+
+        if (sideDist.x < sideDist.y) {
+            if (sideDist.x < sideDist.z) {
+                sideDist.x += deltaDist.x;
+                map.x += rayStep.x;
+                mask = bvec3(true, false, false);
+            } else {
+                sideDist.z += deltaDist.z;
+                map.z += rayStep.z;
+                mask = bvec3(false, false, true);
+            }
+        } else {
+            if (sideDist.y < sideDist.z) {
+                sideDist.y += deltaDist.y;
+                map.y += rayStep.y;
+                mask = bvec3(false, true, false);
+            } else {
+                sideDist.z += deltaDist.z;
+                map.z += rayStep.z;
+                mask = bvec3(false, false, true);
+            }
+        }
+    }
+    // debug saves
+
+    discard;
+
 }
 
 

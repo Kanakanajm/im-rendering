@@ -9,7 +9,7 @@
 
 using namespace nasl;
 #define CUBE_SIZE 3
-#define INSTANCES_COUNT 1
+#define INSTANCES_COUNT 1024
 
 struct Tri { vec3 v0, v1, v2; vec3 color; };
 
@@ -194,12 +194,16 @@ int main(int argc, char** argv) {
     }
 
     uint blocks[3][3][3] = {0};
-    for (size_t x = 0; x < 3; x++)
-    for (size_t y = 0; y < 3; y++)
-    for (size_t z = 0; z < 3; z++)
-    {
-        blocks[x][y][z] = int(x % 2 == 1);
-    }
+    blocks[1][0][1] = 1;
+    blocks[1][1][1] = 1;
+    blocks[1][2][1] = 1;
+     
+    blocks[0][1][1] = 1;
+    blocks[2][1][1] = 1;
+
+    blocks[1][1][0] = 1;
+    blocks[1][1][2] = 1;
+    
     std::unique_ptr<imr::Buffer> block_buffer = std::make_unique<imr::Buffer>(device, sizeof(blocks), VK_BUFFER_USAGE_TRANSFER_DST_BIT  | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
     block_buffer->uploadDataSync(0, block_buffer->size, blocks);
 
@@ -207,6 +211,7 @@ int main(int argc, char** argv) {
 
     // self assign
     instances.push_back({ivec3(0, 0, 0), block_buffer->device_address()});
+    instances.push_back({ivec3(3, 0, 0), block_buffer->device_address()});
     // instances.push_back({ivec3(0, 1, -2), block_buffer->device_address()});
     // instances.push_back({ivec3(4, -2, 3), block_buffer->device_address()});
     // instances.push_back({ivec3(1, -4, -10), block_buffer->device_address()});
@@ -226,21 +231,21 @@ int main(int argc, char** argv) {
     // }
 
     // random pos
-    // for (size_t i = 0; i < INSTANCES_COUNT; i++) {
-    //     ivec3 p;
-    //     p.x = int(((float)rand() / RAND_MAX) * 20 - 10);
-    //     p.y = int(((float)rand() / RAND_MAX) * 20 - 10);
-    //     p.z = int(((float)rand() / RAND_MAX) * 20 - 10);
-    //     instances.push_back({
-    //         p,
-    //         block_buffer->device_address() // same for every instance
-    //     });
-    // }
+    for (size_t i = 0; i < INSTANCES_COUNT; i++) {
+        ivec3 p;
+        p.x = int(((float)rand() / RAND_MAX) * 200 - 100);
+        p.y = int(((float)rand() / RAND_MAX) * 200 - 100);
+        p.z = int(((float)rand() / RAND_MAX) * 200 - 100);
+        instances.push_back({
+            p,
+            block_buffer->device_address() // same for every instance
+        });
+    }
 
     auto prev_frame = imr_get_time_nano();
     float delta = 0;
 
-    camera = {{0, 0, 11}, {0, 0}, 90};
+    camera = {{0, 0, 7}, {0, 0}, 90};
 
     vec4 debug_vectors[400*400] = { vec4(0) };
 
