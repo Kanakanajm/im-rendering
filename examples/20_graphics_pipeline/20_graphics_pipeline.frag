@@ -3,7 +3,7 @@
 #extension GL_EXT_scalar_block_layout : require
 #extension GL_EXT_buffer_reference : require
 #define EPSILON 1e-3
-
+#define EPSILON_FACE 1e-3
 #define MAX_STEP 5
 layout(location = 0)
 in vec3 color;
@@ -105,7 +105,6 @@ void main() {
     // colorOut = vec4(float(textureFrontFace(map)));
 
     // dda
-
     vec3 deltaDist = abs(1 / dir);
 
     ivec3 rayStep = ivec3(sign(dir));
@@ -113,10 +112,21 @@ void main() {
     vec3 sideDist =
         (sign(dir) * (vec3(map) - pos) + (sign(dir) * 0.5) + 0.5) * deltaDist;
 
+    // debug saves
     push_constants.debug_buffer.vectors[iscreen.y*400 + iscreen.x] = vec4(rayStep, 99);
-            push_constants.debug2_buffer.vectors[iscreen.y*400 + iscreen.x] = vec4(map, 99);
+    push_constants.debug2_buffer.vectors[iscreen.y*400 + iscreen.x] = vec4(map, 99);
 
-    bvec3 mask = bvec3(false, true, false);
+
+    bvec3 mask;
+    if (abs(pos.x - 0.0) < EPSILON_FACE || abs(pos.x - 3.0) < EPSILON_FACE) {
+         mask = bvec3(true, false, false);
+    } else if (abs(pos.y - 0.0) < EPSILON_FACE || abs(pos.y - 3.0) < EPSILON_FACE) {
+        mask = bvec3(false, true, false);
+    } else if (abs(pos.z - 0.0) < EPSILON_FACE || abs(pos.z - 3.0) < EPSILON_FACE) {
+        mask = bvec3(false, false, true);
+    }
+
+    
     for (int i = 0; i < MAX_STEP; i++) {
         // if hit block
         if (isBlock(map)) {
@@ -159,7 +169,6 @@ void main() {
             }
         }
     }
-    // debug saves
 
     discard;
 
