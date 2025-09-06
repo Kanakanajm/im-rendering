@@ -17,9 +17,12 @@ layout(scalar, buffer_reference) buffer DebugBuffer {
 
 layout(scalar, buffer_reference) buffer TransformBuffer {
     mat4 mpp; // perspective projection matrix
-    mat4 mr; // camera rotation matrix
-    mat4 mpp_inv;
-    vec3 cam_pos;
+    mat4 m_cs_ws; // camera rotation matrix
+    mat4 m_cs_ws_rot; // camera space to world space, rotation only
+};
+
+layout(scalar, buffer_reference) buffer BlockBuffer {
+    uint blocks[3][3][3];
 };
 
 layout(scalar, push_constant) uniform T {
@@ -27,6 +30,7 @@ layout(scalar, push_constant) uniform T {
     DebugBuffer debug_buffer;
     DebugBuffer debug2_buffer;
     TransformBuffer trans_buffer;
+    BlockBuffer block_buffer;
     ivec4 cube; // (x, y, z) position and id as w
 } push_constants;
 

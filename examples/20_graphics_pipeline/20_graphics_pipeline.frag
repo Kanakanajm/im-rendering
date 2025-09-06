@@ -4,6 +4,7 @@
 #extension GL_EXT_buffer_reference : require
 #define EPSILON 1e-3
 
+#define MAX_STEP 5
 layout(location = 0)
 in vec3 color;
 
@@ -20,10 +21,13 @@ layout(scalar, buffer_reference) buffer DebugBuffer {
 };
 
 layout(scalar, buffer_reference) buffer TransformBuffer {
-    mat4 mpp; // prospective projection matrix
-    mat4 mr; // camera rotation matrix
-    mat4 mpp_inv;
-    vec3 cam_pos;
+    mat4 mpp; // perspective projection matrix
+    mat4 m_cs_ws; // camera space to world space
+    mat4 m_cs_ws_rot; // camera space to world space, rotation only
+};
+
+layout(scalar, buffer_reference) buffer BlockBuffer {
+    uint blocks[3][3][3];
 };
 
 layout(scalar, push_constant) uniform T {
@@ -31,6 +35,7 @@ layout(scalar, push_constant) uniform T {
     DebugBuffer debug_buffer;
     DebugBuffer debug2_buffer;
     TransformBuffer trans_buffer;
+    BlockBuffer block_buffer;
     ivec4 cube; // (x, y, z) position and id as w
 } push_constants;
 
@@ -38,15 +43,24 @@ bool inRange(ivec3 m) {
     return all(greaterThanEqual(vec3(m) + vec3(EPSILON), vec3(0))) && all(lessThan(vec3(m) - vec3(EPSILON), vec3(3)));
 }
 
+// should only be used in dda after inRange check!
+// vec4 blockColor(ivec3 m) {
+//     // buffered
+//     if (push_constants.block_buffer.blocks[m.x][m.y][m.z]) {
+//         return vec4(1);
+//     }    
+//     // procedure
+//     // if (inRange(m)) {
+//     //     return vec4(1);
+//     // }
+//     return vec4(0);
+// }
+
 bool textureFrontFace(ivec3 m) {
     return inRange(m) && m.z == 2;
 }
 
 float palette[3] = {0.3, 0.6, 0.9};
-
-// bool textureCross(ivec3 m) {
-//     return inRange(m) && m 
-// }
 
 void main() {
     vec2 screen = gl_FragCoord.xy - vec2(0.5);
@@ -60,18 +74,86 @@ void main() {
 
     vec3 cs = vec3(depth * ndc, -depth);
 
-    vec4 ws = push_constants.trans_buffer.mr * vec4(cs, 1); // camera translation
+
+    vec4 ws = push_constants.trans_buffer.m_cs_ws * vec4(cs, 1); // camera translation
 
     vec4 os = ws - vec4(vec3(push_constants.cube.xyz), 0);
 
+    vec3 dir = normalize((push_constants.trans_buffer.m_cs_ws * vec4(cs, 0)).xyz);
+
+    vec3 pos = os.xyz;
+
+    ivec3 map = ivec3(pos);
+
+
     // debug saves
     push_constants.debug_buffer.vectors[iscreen.y*400 + iscreen.x] = gl_FragCoord;
-    push_constants.debug2_buffer.vectors[iscreen.y*400 + iscreen.x] = os;
+    push_constants.debug2_buffer.vectors[iscreen.y*400 + iscreen.x] = vec4(map, 0);
 
-    ivec3 map = ivec3(os.xyz);
+    // show dir debug
+    // colorOut = vec4(dir, 1.0);
 
-    colorOut = vec4(palette[map.x], palette[map.y], palette[map.z], 1) * float(inRange(map));
-    // colorOut = vec4(float(inRange(map)));
+    // show coverage
+    colorOut = vec4(float(inRange(map)));
+
+    // show object space index
+    // colorOut = vec4(palette[map.x], palette[map.y], palette[map.z], float(inRange(map)));
+
+    // show front face only
+    // colorOut = vec4(float(textureFrontFace(map)));
+
+    // dda
+
+    // vec3 deltaDist = abs(1 / dir);
+
+    // ivec3 rayStep = ivec3(sign(dir));
+    // vec3 sideDist =
+    //     (sign(dir) * (vec3(map) - pos) + (sign(dir) * 0.5) + 0.5) * deltaDist;
+
+    // bvec3 mask = bvec3(false, true, false);
+
+    // for (int i = 0; i < MAX_STEP; i++) {
+    //     // if hit block
+    //     if (inRange(map)) {
+    //         vec4 shadow;
+    //         // fake shadow on sides
+    //         if (mask.x) {
+    //             shadow = vec4(0.5);
+    //         }
+    //         if (mask.y) {
+    //             shadow = vec4(1.0);
+    //         }
+    //         if (mask.z) {
+    //             shadow = vec4(0.75);
+    //         }
+    //         // mix shadow color with block color
+    //         colorOut = shadow * vec4(push_constants.block_buffer.blocks[map.x][map.y][map.z]);
+    //         return;
+    //     }
+
+    //     if (sideDist.x < sideDist.y) {
+    //         if (sideDist.x < sideDist.z) {
+    //             sideDist.x += deltaDist.x;
+    //             map.x += rayStep.x;
+    //             mask = bvec3(true, false, false);
+    //         } else {
+    //             sideDist.z += deltaDist.z;
+    //             map.z += rayStep.z;
+    //             mask = bvec3(false, false, true);
+    //         }
+    //     } else {
+    //         if (sideDist.y < sideDist.z) {
+    //             sideDist.y += deltaDist.y;
+    //             map.y += rayStep.y;
+    //             mask = bvec3(false, true, false);
+    //         } else {
+    //             sideDist.z += deltaDist.z;
+    //             map.z += rayStep.z;
+    //             mask = bvec3(false, false, true);
+    //         }
+    //     }
+    // }
+    // colorOut = vec4(0);
 }
 
 
