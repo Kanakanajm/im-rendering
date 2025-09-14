@@ -36,6 +36,7 @@ layout(scalar, push_constant) uniform T {
     TransformBuffer trans_buffer;
     BlockBuffer block_buffer;
     ivec4 cube; // (x, y, z) position and id as w
+    float rotate_rad;
 } push_constants;
 
 bool inRange(ivec3 m) {
@@ -63,9 +64,18 @@ bool textureFrontFace(ivec3 m) {
     return inRange(m) && m.z == 2;
 }
 
+
+
 float palette[3] = {0.3, 0.6, 0.9};
 
 void main() {
+
+    mat4 rotateYInv = mat4(mat3(
+        cos(-push_constants.rotate_rad), 0.0, sin(-push_constants.rotate_rad),
+        0.0, 1.0, 0.0,
+        -sin(-push_constants.rotate_rad), 0.0, cos(-push_constants.rotate_rad)
+    ));
+
     vec2 screen = gl_FragCoord.xy - vec2(0.5);
     ivec2 iscreen = ivec2(screen);
     screen = screen / vec2(200) - 1;
@@ -74,7 +84,7 @@ void main() {
     vec4 world_space = push_constants.trans_buffer.mpp_inv * clip_space;
     world_space /= world_space.w;
 
-    vec4 object_space = world_space - vec4(push_constants.cube.xyz, 0);
+    vec4 object_space = rotateYInv * (world_space - vec4(push_constants.cube.xyz, 0));
 
     // gl_FragDepth = 1 - gl_FragCoord.z;
         // // debug saves

@@ -2,6 +2,8 @@
 #include "imr/util.h"
 
 #include <cmath>
+#include <chrono>
+#include <iostream>
 #include "nasl/nasl.h"
 #include "nasl/nasl_mat.h"
 
@@ -95,6 +97,7 @@ struct {
     VkDeviceAddress trans_buffer;
     VkDeviceAddress block_buffer;
     ivec4 cube;
+    float rotate_rad;
 } push_constants_batched;
 
 Camera camera;
@@ -374,6 +377,11 @@ int main(int argc, char** argv) {
 
             auto& pipeline = shaders->pipeline;
             vkCmdBindPipeline(cmdbuf, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline->pipeline());
+            std::chrono::milliseconds ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::system_clock::now().time_since_epoch()
+            );
+            std::cout << fmod((float)(ms.count() % 10000000 / 1000.0), M_PI * 2)  << std::endl;
+            push_constants_batched.rotate_rad = fmod((float)(ms.count() % 10000000 / 1000.0), M_PI * 2);
 
             context.frame().withRenderTargets(cmdbuf, { &image }, &*depthBuffer, [&]() {
                 uint cube_id = 1;
