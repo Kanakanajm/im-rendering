@@ -84,9 +84,8 @@ Cube make_cube() {
 }
 
 struct {
-    mat4 mpp = identity_mat4; // perspective projection matrix
-    mat4 m_cs_ws = identity_mat4; // camera space to world space
-    mat4 m_cs_ws_rot = identity_mat4; // camera space to world space, rotation only
+    mat4 mpp = identity_mat4; // perspective projection matrix, world space -> clip space
+    mat4 mpp_inv = identity_mat4; // inverse of perspective projection matrix, clip space -> world space
 } transform_matrices;
 
 struct {
@@ -156,6 +155,44 @@ struct Shaders {
     }
 };
 
+uint blockTexture2[3][3][3] = {
+    {
+        {1, 0, 1},
+        {0, 0, 0},
+        {1, 0, 1}
+    },
+    { 
+        {0, 0, 0},
+        {0, 1, 0},
+        {0, 0, 0}
+    },
+    { 
+        {1, 0, 1},
+        {0, 0, 0},
+        {1, 0, 1}
+    }
+};
+
+uint blockTexture[3][3][3] = {
+    { // z = 0
+        {0, 0, 0},
+        {0, 1, 0},
+        {0, 0, 0}
+    },
+    { // z = 1
+        {0, 1, 0},
+        {1, 1, 1},
+        {0, 1, 0}
+    },
+    { // z = 2
+        {0, 0, 0},
+        {0, 1, 0},
+        {0, 0, 0}
+    }
+};
+
+
+
 int main(int argc, char** argv) {
     glfwInit();
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -192,26 +229,15 @@ int main(int argc, char** argv) {
         push_constants_batched.vertex_buffer = vertex_buffer->device_address();
         vertex_buffer->uploadDataSync(0, vertex_buffer->size, vertex_vector.data());
     }
-
-    uint blocks[3][3][3] = {0};
-    blocks[1][0][1] = 1;
-    blocks[1][1][1] = 1;
-    blocks[1][2][1] = 1;
-     
-    blocks[0][1][1] = 1;
-    blocks[2][1][1] = 1;
-
-    blocks[1][1][0] = 1;
-    blocks[1][1][2] = 1;
     
-    std::unique_ptr<imr::Buffer> block_buffer = std::make_unique<imr::Buffer>(device, sizeof(blocks), VK_BUFFER_USAGE_TRANSFER_DST_BIT  | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
-    block_buffer->uploadDataSync(0, block_buffer->size, blocks);
+    std::unique_ptr<imr::Buffer> block_buffer = std::make_unique<imr::Buffer>(device, sizeof(blockTexture), VK_BUFFER_USAGE_TRANSFER_DST_BIT  | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    block_buffer->uploadDataSync(0, block_buffer->size, blockTexture);
 
     std::vector<CubeInstance> instances;
 
     // self assign
-    instances.push_back({ivec3(0, 0, 0), block_buffer->device_address()});
-    instances.push_back({ivec3(3, 0, 0), block_buffer->device_address()});
+    // instances.push_back({ivec3(0, 0, 0), block_buffer->device_address()});
+    // instances.push_back({ivec3(3, 0, 0), block_buffer->device_address()});
     // instances.push_back({ivec3(0, 1, -2), block_buffer->device_address()});
     // instances.push_back({ivec3(4, -2, 3), block_buffer->device_address()});
     // instances.push_back({ivec3(1, -4, -10), block_buffer->device_address()});
@@ -276,11 +302,6 @@ int main(int argc, char** argv) {
             camera_update(window, &camera_input);
             camera_move_freelook(&camera, &camera_input, &camera_state, delta);
 
-
-            mat4 m_cs_ws = identity_mat4;
-            m_cs_ws = mul_mat4(invert_mat4(camera_rotation_matrix(&camera)),  m_cs_ws);
-            transform_matrices.m_cs_ws_rot = m_cs_ws; // intermediate step (rotation only)
-            transform_matrices.m_cs_ws =  mul_mat4(translate_mat4(camera.position), m_cs_ws);
 
             if (reload_shaders) {
                 swapchain.drain();
@@ -347,6 +368,7 @@ int main(int argc, char** argv) {
             m = m * view_mat;
             // m = m * translate_mat4(vec3(-0.5, -0.5f, -0.5f));
             transform_matrices.mpp = m;
+            transform_matrices.mpp_inv = invert_mat4(m);
             trans_buffer->uploadDataSync(0, trans_buffer->size, &transform_matrices);
             
 

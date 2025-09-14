@@ -17,7 +17,7 @@ mat4 camera_get_view_mat4(const Camera* camera, size_t width, size_t height) {
     matrix = mul_mat4(translate_mat4(vec3_neg(camera->position)), matrix);
     matrix = mul_mat4(camera_rotation_matrix(camera), matrix);
     float ratio = ((float) width) / ((float) height);
-    matrix = mul_mat4(perspective_mat4(ratio, camera->fov, 1.f, 1001.f), matrix);
+    matrix = mul_mat4(perspective_mat4(ratio, camera->fov, .1f, 1000.f), matrix);
     return matrix;
 }
 
