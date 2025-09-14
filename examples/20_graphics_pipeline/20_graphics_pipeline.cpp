@@ -72,15 +72,15 @@ Cube make_cube() {
     // top face
     add_face(H, D, C, G, vec3(0, 1, 0));
     // north face
-    add_face(A, B, C, D, vec3(1, 0, 0));
+    add_face(A, B, C, D, vec3(0, 0, 1));
     // west face
-    add_face(A, D, H, E, vec3(0, 0, 1));
+    add_face(A, D, H, E, vec3(1, 0, 0));
     // east face
-    add_face(F, G, C, B, vec3(1, 0, 1));
+    add_face(F, G, C, B, vec3(1, 0, 0));
     // south face
-    add_face(E, H, G, F, vec3(0, 1, 1));
+    add_face(E, H, G, F, vec3(0, 0, 1));
     // bottom face
-    add_face(E, F, B, A, vec3(1, 1, 0));
+    add_face(E, F, B, A, vec3(0, 1, 0));
     assert(i == 12);
     return cube;
 }
@@ -88,6 +88,7 @@ Cube make_cube() {
 struct {
     mat4 mpp = identity_mat4; // perspective projection matrix, world space -> clip space
     mat4 mpp_inv = identity_mat4; // inverse of perspective projection matrix, clip space -> world space
+    vec3 cam_pos;
 } transform_matrices;
 
 struct {
@@ -292,19 +293,18 @@ int main(int argc, char** argv) {
     push_constants_batched.trans_buffer = trans_buffer->device_address();
 
     auto shaders = std::make_unique<Shaders>(device, swapchain);
+            debug_buffer->uploadDataSync(0, debug_buffer->size, debug_vectors);
+        debug2_buffer->uploadDataSync(0, debug2_buffer->size, debug2_vectors);
 
     auto& vk = device.dispatch;
     while (!glfwWindowShouldClose(window)) {
-        debug_buffer->uploadDataSync(0, debug_buffer->size, debug_vectors);
-        debug2_buffer->uploadDataSync(0, debug2_buffer->size, debug2_vectors);
-
         fps_counter.tick();
         fps_counter.updateGlfwWindowTitle(window);
 
         swapchain.renderFrameSimplified([&](imr::Swapchain::SimplifiedRenderContext& context) {
             camera_update(window, &camera_input);
             camera_move_freelook(&camera, &camera_input, &camera_state, delta);
-
+            transform_matrices.cam_pos = camera.position;
 
             if (reload_shaders) {
                 swapchain.drain();
@@ -380,7 +380,6 @@ int main(int argc, char** argv) {
             std::chrono::milliseconds ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                 std::chrono::system_clock::now().time_since_epoch()
             );
-            std::cout << fmod((float)(ms.count() % 10000000 / 1000.0), M_PI * 2)  << std::endl;
             push_constants_batched.rotate_rad = fmod((float)(ms.count() % 10000000 / 1000.0), M_PI * 2);
 
             context.frame().withRenderTargets(cmdbuf, { &image }, &*depthBuffer, [&]() {

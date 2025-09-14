@@ -18,6 +18,7 @@ layout(scalar, buffer_reference) buffer DebugBuffer {
 layout(scalar, buffer_reference) buffer TransformBuffer {
     mat4 mpp; // perspective projection matrix, world space -> clip space
     mat4 mpp_inv; // inverse of perspective projection matrix, clip space -> world space
+    vec3 cam_pos;
 };
 
 layout(scalar, buffer_reference) buffer BlockBuffer {
